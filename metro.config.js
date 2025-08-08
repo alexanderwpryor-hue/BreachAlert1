@@ -1,11 +1,14 @@
-const { getDefaultConfig, mergeConfig } = require('@react-native/metro-config');
-
+// metro.config.js
 /**
- * Metro configuration
- * https://reactnative.dev/docs/metro
- *
- * @type {import('@react-native/metro-config').MetroConfig}
+ * Metro configuration for React Native
+ * https://github.com/facebook/react-native
  */
-const config = {};
 
-module.exports = mergeConfig(getDefaultConfig(__dirname), config);
+const { getDefaultConfig } = require("@react-native/metro-config");
+
+const config = getDefaultConfig(__dirname);
+
+// If you need TypeScript or cjs support, uncomment and adjust:
+// config.resolver.sourceExts = [...config.resolver.sourceExts, "ts", "tsx", "cjs"];
+
+module.exports = config;

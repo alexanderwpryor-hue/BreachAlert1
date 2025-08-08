@@ -77,34 +77,31 @@ android {
     buildToolsVersion rootProject.ext.buildToolsVersion
     compileSdk rootProject.ext.compileSdkVersion
 
-    namespace "com.breachalert"
+    namespace "com.breachalert.app"
     defaultConfig {
-        applicationId "com.breachalert"
+        applicationId "com.breachalert.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode 50
+        versionName "1.0.50"
     }
-    signingConfigs {
-        debug {
-            storeFile file('debug.keystore')
-            storePassword 'android'
-            keyAlias 'androiddebugkey'
-            keyPassword 'android'
-        }
+  signingConfigs {
+    release {
+      // Pull in the values from gradle.properties
+      storeFile file(MYAPP_RELEASE_STORE_FILE)
+      storePassword MYAPP_RELEASE_STORE_PASSWORD
+      keyAlias MYAPP_RELEASE_KEY_ALIAS
+      keyPassword MYAPP_RELEASE_KEY_PASSWORD
     }
-    buildTypes {
-        debug {
-            signingConfig signingConfigs.debug
-        }
-        release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
-            minifyEnabled enableProguardInReleaseBuilds
-            proguardFiles getDefaultProguardFile("proguard-android.txt"), "proguard-rules.pro"
-        }
+  }
+
+  buildTypes {
+    release {
+      signingConfig signingConfigs.release
+      minifyEnabled false
+      // your other settings…
     }
+  }
 }
 
 dependencies {

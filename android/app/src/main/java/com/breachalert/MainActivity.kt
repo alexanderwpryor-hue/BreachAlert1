@@ -1,4 +1,4 @@
-package com.breachalert
+package com.breachalert.app
 
 import com.facebook.react.ReactActivity
 import com.facebook.react.ReactActivityDelegate
