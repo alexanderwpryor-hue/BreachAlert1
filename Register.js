@@ -1,192 +1,344 @@
 // Register.js
-import React, { useState } from "react";
-import { resendConfirmation } from "./api"; 
-
+import React, { useRef, useState, useEffect } from "react";
 import {
   SafeAreaView,
+  View,
   Text,
   TextInput,
-  View,
   StyleSheet,
-  Button,
-  Alert,
   TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  Switch,
+  Animated,
+  ActivityIndicator,
 } from "react-native";
-import { register, login } from "./api";
+import { colors, base, radius } from "./theme";
+import { PrimaryButton, Pill } from "./ui";
+// If your API uses `signup` instead, import that and rename here.
+import { register as signup } from "./api";
 
-export default function Register({ navigation, onRegistered }) {
+const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export default function Register({ navigation }) {
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
+  const [pw, setPw] = useState("");
+  const [pw2, setPw2] = useState("");
+  const [showPw, setShowPw] = useState(false);
+  const [showPw2, setShowPw2] = useState(false);
+  const [agree, setAgree] = useState(true);
+
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [formError, setFormError] = useState("");
+  const [nameErr, setNameErr] = useState("");
+  const [emailErr, setEmailErr] = useState("");
+  const [pwErr, setPwErr] = useState("");
+  const [pw2Err, setPw2Err] = useState("");
 
-const doRegister = async () => {
-  const normalizedEmail = email.trim().toLowerCase();
-  if (!normalizedEmail || !password) {
-    setError("Email and password required.");
-    return;
-  }
-  if (password !== confirm) {
-    setError("Passwords do not match.");
-    return;
-  }
+  // soft hero fade
+  const fade = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(fade, { toValue: 1, duration: 450, useNativeDriver: true }).start();
+  }, []);
 
-  setLoading(true);
-  setError("");
+  const validate = () => {
+    let ok = true;
+    setFormError(""); setNameErr(""); setEmailErr(""); setPwErr(""); setPw2Err("");
 
-  try {
-    await register(normalizedEmail, password);
+    if (!name.trim()) {
+      setNameErr("Please enter your name.");
+      ok = false;
+    }
+    const e = email.trim().toLowerCase();
+    if (!e || !emailRegex.test(e)) {
+      setEmailErr("Enter a valid email address.");
+      ok = false;
+    }
+    if (!pw || pw.length < 8) {
+      setPwErr("Password must be at least 8 characters.");
+      ok = false;
+    }
+    if (pw2 !== pw) {
+      setPw2Err("Passwords do not match.");
+      ok = false;
+    }
+    if (!agree) {
+      setFormError("Please accept the Terms and Privacy Policy to continue.");
+      ok = false;
+    }
+    return ok;
+  };
 
-    Alert.alert(
-      "Almost there!",
-      "We've sent you a confirmation email. Please check your inbox before logging in."
-    );
-
-    navigation.replace("Login");
-  } catch (e) {
-    console.log("register error:", e);
-    const msg =
-      e.response?.data?.msg ||
-      (e.response?.status === 409
-        ? "Email already registered."
-        : e.message || "Registration failed.");
-    setError(msg);
-  } finally {
-    setLoading(false);
-  }
-};
+  const onSubmit = async () => {
+    if (!validate()) return;
+    setLoading(true);
+    setFormError("");
+    try {
+      await signup(email.trim().toLowerCase(), pw, name.trim());
+      // Option A (email confirmation flow):
+      // navigate to a tiny screen telling them to verify email, or just send to Login with a note
+      navigation.replace("Login", {
+        toast: "Account created. Please check your email to verify before logging in.",
+      });
+    } catch (e) {
+      const msg =
+        e?.response?.data?.msg ||
+        e?.message ||
+        "Registration failed. Please try again.";
+      setFormError(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <Text style={styles.heading}>Create BreachAlert Account</Text>
-      <View style={styles.form}>
-        <Text style={styles.label}>Email</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="you@example.com"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          editable={!loading}
-        />
+    <SafeAreaView style={base.screen}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={{ flex: 1 }}
+      >
+        <View style={[base.container, { paddingTop: 28, gap: 12 }]}>
+          {/* Brand row */}
+          <View style={styles.brandRow}>
+            <View style={styles.logoDot} />
+            <Text style={styles.brand}>BreachAlert</Text>
+          </View>
 
-        <Text style={styles.label}>Password</Text>
-        <View style={styles.passwordRow}>
-          <TextInput
-            style={[styles.input, { flex: 1, marginRight: 8 }]}
-            placeholder="Password"
-            secureTextEntry={!showPassword}
-            value={password}
-            onChangeText={setPassword}
-            editable={!loading}
-          />
-          <TouchableOpacity
-            onPress={() => setShowPassword((s) => !s)}
-            style={styles.toggleButton}
-          >
-            <Text style={styles.toggleText}>
-              {showPassword ? "Hide" : "Show"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <Pill text="Create your account" style={{ marginTop: 8 }} />
 
-        <Text style={styles.label}>Confirm Password</Text>
-        <View style={styles.passwordRow}>
-          <TextInput
-            style={[styles.input, { flex: 1, marginRight: 8 }]}
-            placeholder="Confirm Password"
-            secureTextEntry={!showConfirm}
-            value={confirm}
-            onChangeText={setConfirm}
-            editable={!loading}
-          />
-          <TouchableOpacity
-            onPress={() => setShowConfirm((s) => !s)}
-            style={styles.toggleButton}
-          >
-            <Text style={styles.toggleText}>
-              {showConfirm ? "Hide" : "Show"}
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <Animated.Text style={[styles.title, { opacity: fade }]}>
+            Start free. Protect your family’s data in minutes.
+          </Animated.Text>
 
-        {error ? <Text style={styles.error}>{error}</Text> : null}
-        <Button
-          title={loading ? "Registering..." : "Register"}
-          onPress={doRegister}
-          disabled={loading}
-        />
-        <View style={styles.switchRow}>
-          <Text style={styles.switchText}>Already have an account?</Text>
-          <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-            <Text style={styles.switchLink}> Log in</Text>
-          </TouchableOpacity>
+          <View style={styles.card}>
+            {/* Name */}
+            <Text style={base.label}>Name</Text>
+            <TextInput
+              style={[base.input, nameErr ? styles.inputError : null]}
+              placeholder="Your name"
+              placeholderTextColor={colors.subtext}
+              value={name}
+              onChangeText={(t) => {
+                setName(t);
+                if (nameErr) setNameErr("");
+              }}
+              editable={!loading}
+              accessibilityLabel="Name"
+              autoCapitalize="words"
+            />
+            {!!nameErr && <Text style={styles.fieldError}>{nameErr}</Text>}
+
+            {/* Email */}
+            <Text style={[base.label, { marginTop: 12 }]}>Email</Text>
+            <TextInput
+              style={[base.input, emailErr ? styles.inputError : null]}
+              placeholder="you@example.com"
+              placeholderTextColor={colors.subtext}
+              value={email}
+              onChangeText={(t) => {
+                setEmail(t);
+                if (emailErr) setEmailErr("");
+              }}
+              editable={!loading}
+              accessibilityLabel="Email"
+              autoCapitalize="none"
+              keyboardType="email-address"
+            />
+            {!!emailErr && <Text style={styles.fieldError}>{emailErr}</Text>}
+
+            {/* Password */}
+            <Text style={[base.label, { marginTop: 12 }]}>Password</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[
+                  base.input,
+                  { flex: 1, marginRight: 8 },
+                  pwErr ? styles.inputError : null,
+                ]}
+                placeholder="At least 8 characters"
+                placeholderTextColor={colors.subtext}
+                secureTextEntry={!showPw}
+                value={pw}
+                onChangeText={(t) => {
+                  setPw(t);
+                  if (pwErr) setPwErr("");
+                }}
+                editable={!loading}
+                accessibilityLabel="Password"
+              />
+              <TouchableOpacity
+                onPress={() => setShowPw((s) => !s)}
+                style={styles.showBtn}
+                accessibilityRole="button"
+              >
+                <Text style={{ color: colors.text, fontWeight: "700" }}>
+                  {showPw ? "Hide" : "Show"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {!!pwErr && <Text style={styles.fieldError}>{pwErr}</Text>}
+
+            {/* Confirm Password */}
+            <Text style={[base.label, { marginTop: 12 }]}>Confirm password</Text>
+            <View style={styles.passwordRow}>
+              <TextInput
+                style={[
+                  base.input,
+                  { flex: 1, marginRight: 8 },
+                  pw2Err ? styles.inputError : null,
+                ]}
+                placeholder="Repeat password"
+                placeholderTextColor={colors.subtext}
+                secureTextEntry={!showPw2}
+                value={pw2}
+                onChangeText={(t) => {
+                  setPw2(t);
+                  if (pw2Err) setPw2Err("");
+                }}
+                editable={!loading}
+                accessibilityLabel="Confirm password"
+              />
+              <TouchableOpacity
+                onPress={() => setShowPw2((s) => !s)}
+                style={styles.showBtn}
+                accessibilityRole="button"
+              >
+                <Text style={{ color: colors.text, fontWeight: "700" }}>
+                  {showPw2 ? "Hide" : "Show"}
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {!!pw2Err && <Text style={styles.fieldError}>{pw2Err}</Text>}
+
+            {/* Terms */}
+            <View style={[styles.row, { justifyContent: "space-between" }]}>
+              <View style={styles.row}>
+                <Switch
+                  value={agree}
+                  onValueChange={setAgree}
+                  disabled={loading}
+                  trackColor={{ false: "#26314f", true: colors.primaryAlt }}
+                  thumbColor="#fff"
+                />
+                <Text style={{ color: colors.subtext, marginLeft: 8 }}>
+                  I agree to the{" "}
+                  <Text style={styles.link}>Terms</Text> and{" "}
+                  <Text style={styles.link}>Privacy Policy</Text>
+                </Text>
+              </View>
+            </View>
+
+            {/* Form error */}
+            {!!formError && <Text style={styles.error}>{formError}</Text>}
+
+            {/* Submit */}
+            <View style={{ position: "relative", marginTop: 8 }}>
+              <PrimaryButton
+                title={loading ? "Creating account…" : "Create account"}
+                onPress={onSubmit}
+                disabled={loading}
+              />
+              {loading && (
+                <ActivityIndicator
+                  style={styles.btnSpinner}
+                  size="small"
+                  color="#fff"
+                />
+              )}
+            </View>
+
+            {/* Divider */}
+            <View style={styles.dividerRow}>
+              <View style={styles.divider} />
+              <Text style={{ color: colors.subtext, fontSize: 12, paddingHorizontal: 8 }}>
+                or
+              </Text>
+              <View style={styles.divider} />
+            </View>
+
+            {/* Login CTA */}
+            <View style={[styles.row, { justifyContent: "center" }]}>
+              <Text style={{ color: colors.subtext }}>Already have an account?</Text>
+              <TouchableOpacity onPress={() => navigation.replace("Login")}>
+                <Text style={styles.link}>  Log in</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Legal blip */}
+          <Text style={styles.legal}>
+            We’ll send a verification email to activate your account.
+          </Text>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    padding: 24,
-    justifyContent: "center",
-    backgroundColor: "#f5f5f7",
+  brandRow: { flexDirection: "row", alignItems: "center" },
+  logoDot: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: colors.primary,
+    marginRight: 8,
   },
-  heading: {
-    fontSize: 28,
-    fontWeight: "700",
-    marginBottom: 24,
-    textAlign: "center",
+  brand: { color: colors.text, fontWeight: "900", fontSize: 18, letterSpacing: 0.2 },
+
+  title: {
+    color: colors.text,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "900",
+    marginBottom: 6,
   },
-  form: {
-    gap: 12,
-  },
-  label: {
-    fontSize: 12,
-    fontWeight: "600",
-    marginBottom: 4,
-    color: "#374151",
-  },
-  input: {
+
+  card: {
+    backgroundColor: colors.surface,
+    borderColor: colors.border,
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 8,
-    backgroundColor: "#fff",
+    borderRadius: radius + 6,
+    padding: 18,
   },
-  error: {
-    color: "red",
-    marginBottom: 8,
-  },
-  switchRow: {
-    flexDirection: "row",
-    marginTop: 12,
-    justifyContent: "center",
-  },
-  switchText: { color: "#374151" },
-  switchLink: { color: "#2563eb", fontWeight: "600" },
-  passwordRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  toggleButton: {
-    paddingVertical: 10,
+
+  passwordRow: { flexDirection: "row", alignItems: "center" },
+
+  showBtn: {
+    backgroundColor: colors.chip,
+    paddingVertical: 12,
     paddingHorizontal: 12,
-    backgroundColor: "#e2e8f0",
-    borderRadius: 8,
-    justifyContent: "center",
-    alignItems: "center",
+    borderRadius: radius,
+    borderWidth: 1,
+    borderColor: colors.border,
   },
-  toggleText: {
-    fontSize: 14,
-    fontWeight: "600",
+
+  row: { flexDirection: "row", alignItems: "center", marginTop: 12 },
+
+  link: { color: colors.primary, fontWeight: "800" },
+
+  error: { color: colors.danger, marginTop: 10, fontWeight: "800" },
+  fieldError: { color: colors.danger, marginTop: 6, fontSize: 12, fontWeight: "600" },
+  inputError: { borderColor: colors.danger },
+
+  dividerRow: {
+    marginVertical: 14,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  divider: { flex: 1, height: 1, backgroundColor: colors.border },
+
+  legal: {
+    color: colors.subtext,
+    fontSize: 12,
+    marginTop: 8,
+  },
+
+  btnSpinner: {
+    position: "absolute",
+    right: 16,
+    top: 14,
   },
 });
